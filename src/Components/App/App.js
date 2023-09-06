@@ -1,65 +1,68 @@
-import React from 'react';
-import './App.css';
-import SearchBar from '../SearchBar/SearchBar';
-import SearchResults from '../SearchResults/SearchResults';
-import Playlist from '../Playlist/Playlist';
-// import TrackList from '../TrackList/TrackList';
+import React, { useState, useCallback } from "react";
+import "./App.css";
 
+import Playlist from "../Playlist/Playlist";
+import SearchBar from "../SearchBar/SearchBar";
+import SearchResults from "../SearchResults/SearchResults";
+import Spotify from "../../util/Spotify";
 
-class App extends React.Component {
-  constructor(props) {
-    super(props);
+const App = () => {
+  const [searchResults, setSearchResults] = useState([]);
+  const [playlistName, setPlaylistName] = useState("New Playlist");
+  const [playlistTracks, setPlaylistTracks] = useState([]);
 
-    this.state = {
-      searchResults: [{name: 'name1', artist: 'artist1', album: 'album1', id: 1}, 
-      {name: 'name2', artist: 'artist2', album: 'album2', id: 2}, 
-      {name: 'name3', artist: 'artist3', album: 'album3', id: 3}],
-      playListName: 'My Playlist',
-      playListTracks: [{name: 'playListName1', artist: 'playListArtist1', album: 'playListAlbum1', id: 4}, 
-      {name: 'playListName2', artist: 'playListArtist2', album: 'playListAlbum2', id: 5}, 
-      {name: 'playListName3', artist: 'playListArtist3', album: 'playListAlbum3', id: 6}]
-    };
-    this.addTrack = this.addTrack.bind(this);
-    this.removeTrack = this.removeTrack.bind(this);
-    this.updatePlayListName = this.updatePlayListName.bind(this);
-  }
+  const search = useCallback((term) => {
+    Spotify.search(term).then(setSearchResults);
+  }, []);
 
-  addTrack(track) {
-    let tracks = this.state.playListTracks;
-    if (tracks.find(savedTrack => savedTrack.id === track.id)) {
-      return;
-    }
+  const addTrack = useCallback(
+    (track) => {
+      if (playlistTracks.some((savedTrack) => savedTrack.id === track.id))
+        return;
 
-    tracks.push(track);
-    this.setState({ playListTracks: tracks });
-  }
+      setPlaylistTracks((prevTracks) => [...prevTracks, track]);
+    },
+    [playlistTracks]
+  );
 
-  removeTrack(track) {
-    let tracks = this.state.playListTracks;
-    tracks = tracks.filter(currentTrack => currentTrack.id !== track.id);
+  const removeTrack = useCallback((track) => {
+    setPlaylistTracks((prevTracks) =>
+      prevTracks.filter((currentTrack) => currentTrack.id !== track.id)
+    );
+  }, []);
 
-    this.setState({ playListTracks: tracks });
-  }
+  const updatePlaylistName = useCallback((name) => {
+    setPlaylistName(name);
+  }, []);
 
-  updatePlayListName(name) {
-    this.setState({ playListName: name });
-  }
+  const savePlaylist = useCallback(() => {
+    const trackUris = playlistTracks.map((track) => track.uri);
+    Spotify.savePlaylist(playlistName, trackUris).then(() => {
+      setPlaylistName("New Playlist");
+      setPlaylistTracks([]);
+    });
+  }, [playlistName, playlistTracks]);
 
-  render () {
-    return (
-      <div>
-        <h1>Ja<span className="highlight">mmm</span>ing</h1>
-        <div className="App">
-           <SearchBar />
-          <div className="App-playlist">
-            <SearchResults searchResults={this.state.searchResults} onAdd={this.addTrack} />
-            <Playlist playListName={this.state.playListName} playListTracks={this.state.playListTracks} onRemove={this.removeTrack} 
-            onNameChange={this.updatePlayListName} />
-          </div>
+  return (
+    <div>
+      <h1>
+        Ja<span className="highlight">mmm</span>ing
+      </h1>
+      <div className="App">
+        <SearchBar onSearch={search} />
+        <div className="App-playlist">
+          <SearchResults searchResults={searchResults} onAdd={addTrack} />
+          <Playlist
+            playlistName={playlistName}
+            playlistTracks={playlistTracks}
+            onNameChange={updatePlaylistName}
+            onRemove={removeTrack}
+            onSave={savePlaylist}
+          />
         </div>
       </div>
-    )    
-  }
-}
+    </div>
+  );
+};
 
 export default App;
